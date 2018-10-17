@@ -34,13 +34,17 @@ df = df.drop(df.index[-1]) #to drop last row of nan that we have
 lastVals = df.tail(1)
 lastVals = lastVals.values
 print(lastVals.shape)
-values = df.values
+#values = df.values
+stockNum = 2
+truePrice_array = np.zeros(stockNum)
+d = 0
 
 i =1
 a = 3
+y = 4
 #loop to train multiple machine learning models and save them separately to use for later prediction
 for x in range(1,numstocks+1):
-
+    values = df.values
     # convert series to supervised learning
     def series_to_supervised(data, n_in=1, n_out=1, dropnan=True):
         n_vars = 1 if type(data) is list else data.shape[1]
@@ -69,74 +73,95 @@ for x in range(1,numstocks+1):
     # integer encode direction
     # ensure all data is float
     values = values.astype('float32')
-    # normalize features
-    scaler = MinMaxScaler(feature_range=(0, 1))
-    scaled = scaler.fit_transform(values)
-    print('scaled: ', scaled.shape)
+    #specify the name of our target variable
+    target = 'var' + str(y) + '(t)'
+    y += 6 #so that each time we go through loop we get new target variable
     # NEW: specify number of lag days
     n_days = 1
     n_features = 12 #got from varNo in view of reframed Dataframe
     forecast_out = 1
     # frame as supervised learning
-    reframed = series_to_supervised(scaled, n_days, 1)
-    target = np.zeros((len(reframed['var1(t)'])))
-    target.fill(np.nan)
-    reframed['Target'] = target
-    name = 'var' + str(a) + '(t)'
-    print(name)
-    if (a+6) < len(reframed):
-        a = a +6
-    reframed['Target'] = reframed[name].shift(-forecast_out) ############figure out how to tell where our target closing price is (need to increment by adding interval traveling over up to certain point --> since also have
-    reframed['Target'] = reframed['Target'].iloc[:-forecast_out]
-    reframed = reframed.drop(reframed.index[-1])
-    ##drop old target column
-    # drop last row
-    print('Reframed shape: ', reframed.shape)
-    print(reframed)
+    reframed = series_to_supervised(values, n_days, 1)
+    for x in range(1,n_features+1):
+        named = 'var' + str(x) + '(t)'
+        if named != target:
+            reframed = reframed.drop(named, axis = 1)
+
+    print('Reframed in loop: ', reframed.head())
+
+    # prevDay is the last day that we will use to predict our next day stock prices
+    prevDay = reframed[-1:]
+    prevDay = prevDay.drop([target], axis=1)  # get rid of our target column
+    prevDay = prevDay.values
+    values = reframed.values  # get our input data as numpy array, shape is (1,2555)
+    truePrice = reframed[-1:]
+    truePrice = truePrice[target]
+    truePrice = truePrice.values  # get the true closing price we are trying to predict
+    truePrice_array[d] = truePrice
 
     # split into train and test sets
-    values = reframed.values
-    # n_train_days = int(0.8*len(reframed['var1(t)']))
-    n_train_days = int(len(reframed['var1(t)'])*.80)
+    n_train_days = int(0.8 * len(reframed['var1(t-1)']))  # using 80% of our data as our training set
+    n_test_days = int(len(reframed['var1(t-1)']) - n_train_days)
     train = values[:n_train_days, :]
     test = values[n_train_days:, :]
     # split into input and outputs
-    n_obs = n_days * n_features
-    train_X, train_y = train[:, :n_obs], train[:, -1]
-    test_X, test_y = test[:, :n_obs], test[:, -1]
-    print(train_X.shape, len(train_X), train_y.shape)
-    # reshape input to be 3D [samples, timesteps, features]
-    train_X = train_X.reshape((train_X.shape[0], n_days, n_features))
-    test_X = test_X.reshape((test_X.shape[0], n_days, n_features))
+    train_X, train_y = train[:, :-1], train[:, -1]
+    test_X, test_y = test[:, :-1], test[:, -1]
+    # reshape to be 3d input [samples, timesteps, features]
+    # samples are the number of training/ tesing days
+    # time steps are 365 time steps for year of days
+    # features are our 7 inputs
+    train_X = train_X.reshape(n_train_days, n_days, n_features)
+    test_X = test_X.reshape(n_test_days, n_days, n_features)
     print(train_X.shape, train_y.shape, test_X.shape, test_y.shape)
 
     # design network
     model = Sequential()
-    model.add(LSTM(50, input_shape=(train_X.shape[1], train_X.shape[2])))
+    # input shape has dimesions (time step, features)
+    model.add(LSTM(50, input_shape=(1, n_features)))  # feeding in 1 time step  with 7 features at a time
     model.add(Dense(1))
     model.compile(loss='mae', optimizer='adam')
     # fit network
-    history = model.fit(train_X, train_y, epochs=10, batch_size=72, validation_data=(test_X, test_y), verbose=2,
-                        shuffle=False)
+    history = model.fit(train_X, train_y, epochs=1000, batch_size=50, validation_data=(test_X, test_y), verbose=2,
+                        shuffle=True)
+
+
     filename = "model" + str(i)
     i +=1
+    d +=1
     filename = filename + '.h5'
     model.save(filename)
     del model
-    #MemoryError (on only one epoch....)
 
+    print('completed: ', filename)
+
+
+print('we made it through the loop')
 y = 1
+log.debug(y)
+g = 0
+
 #array = np.zeros(1, len(numstocks)) #figure out where to store our predications
-array = np.zeros(1)
-for x in range(1,numstocks):
+array = np.zeros(stockNum)
+rmse_array = np.zeros(stockNum)
+for x in range(1,numstocks+1):
     modelName = 'model' + str(y) +'.h5'
     print(modelName + 'running')
     model = load_model(modelName)
     # make a prediction
     lastVals = lastVals.reshape((1,1,12))
     yhat = model.predict(lastVals)
+    array[g] = yhat
+    rmse_array[g] = sqrt(((array[g] - truePrice_array[g]) ** 2).mean())
+    #print('Test RMSE: %.4f' % rmse)
+    print('yay')
 
 
 
     del model
     y += 1
+    g += 1
+
+print (rmse_array)
+print('youre smart')
+print('nah')
