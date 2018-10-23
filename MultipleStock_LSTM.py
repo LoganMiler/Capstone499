@@ -19,6 +19,7 @@ from keras.layers import Dense
 from keras.layers import LSTM
 from keras.models import save_model
 from keras.models import load_model
+from keras.callbacks import ModelCheckpoint
 from functions import cost
 logging.basicConfig(format='%(asctime)s %(message)s',datefmt= '%m/%d/%y %I:%M:%S %p', level= logging.DEBUG)
 log = logging.getLogger(__name__)
@@ -37,6 +38,9 @@ print(lastVals.shape)
 #values = df.values
 stockNum = 2
 truePrice_array = np.zeros(stockNum)
+prevPrice_array = df.iloc[-2]
+prevPrice_array = prevPrice_array['Close']
+print(prevPrice_array)
 d = 0
 
 i =1
@@ -122,7 +126,7 @@ for x in range(1,numstocks+1):
     model.add(Dense(1))
     model.compile(loss='mae', optimizer='adam')
     # fit network
-    history = model.fit(train_X, train_y, epochs=1000, batch_size=50, validation_data=(test_X, test_y), verbose=2,
+    history = model.fit(train_X, train_y, epochs=1, batch_size=50, validation_data=(test_X, test_y), verbose=2,
                         shuffle=True)
 
 
@@ -130,7 +134,7 @@ for x in range(1,numstocks+1):
     i +=1
     d +=1
     filename = filename + '.h5'
-    model.save(filename)
+    #model.save(filename)
     del model
 
     print('completed: ', filename)
@@ -145,9 +149,10 @@ g = 0
 array = np.zeros(stockNum)
 rmse_array = np.zeros(stockNum)
 for x in range(1,numstocks+1):
+
     modelName = 'model' + str(y) +'.h5'
     print(modelName + 'running')
-    model = load_model(modelName)
+    #model = load_model(modelName)
     # make a prediction
     lastVals = lastVals.reshape((1,1,12))
     yhat = model.predict(lastVals)
@@ -162,6 +167,29 @@ for x in range(1,numstocks+1):
     y += 1
     g += 1
 
-print (rmse_array)
-print('youre smart')
-print('nah')
+filesnames_Index = [w[0:3] for w in filesnames]
+
+#output_DF = pd.DataFrame([list(truePrice_array), list(array)],columns = columns)
+output_DF = pd.DataFrame(index = filesnames_Index,columns = ['true', 'predicted'])
+output_DF['true'] = truePrice_array
+output_DF['predicted'] = array
+diff = array - prevPrice_array
+diff = np.array(diff)
+output_DF['Difference'] = diff
+count = 0
+stockList = []
+while count < (stockNum):
+    if diff[count] > 0:
+        stockList.append('UP')
+    elif diff[count]:
+        stockList.append('DOWN')
+    count += 1
+
+output_DF['Direction'] = stockList
+df_UP = output_DF.loc[output_DF['Direction']=='UP']
+df_DOWN = output_DF.loc[output_DF['Direction']=='DOWN']
+df_UP = df_UP.sort_values('Difference', ascending = False)
+df_DOWN = df_DOWN.sort_values('Difference')
+print(type(stockList))
+print(stockList)
+print('done')
