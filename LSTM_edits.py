@@ -26,7 +26,7 @@ log = logging.getLogger(__name__)
 
 #read in all of our csv files at once from directory
 #filesnames = glob('A*.csv')
-filesnames = glob('G*.csv')
+filesnames = glob('IT_AA*.csv')
 dataframes = [pd.read_csv(f, header = 0, index_col= 0) for f in filesnames]
 numstocks = (len(filesnames))
 log.debug(numstocks)
@@ -36,7 +36,7 @@ lastVals = df.tail(1)
 lastVals = lastVals.values
 print(lastVals.shape)
 #values = df.values
-stockNum = 2
+stockNum = numstocks
 truePrice_array = np.zeros(stockNum)
 prevPrice_array = df.iloc[-2]
 prevPrice_array = prevPrice_array['Close']
@@ -79,10 +79,11 @@ for x in range(1,numstocks+1):
     values = values.astype('float32')
     #specify the name of our target variable
     target = 'var' + str(y) + '(t)'
-    y += 6 #so that each time we go through loop we get new target variable
+    interval = 6 #CHANGES DEPENDING ON INPUTS
+    y += interval #so that each time we go through loop we get new target variable
     # NEW: specify number of lag days
     n_days = 1
-    n_features = 12 #got from varNo in view of reframed Dataframe
+    n_features = len(df.columns) #got from varNo in view of reframed Dataframe
     forecast_out = 1
     # frame as supervised learning
     reframed = series_to_supervised(values, n_days, 1)
@@ -132,8 +133,8 @@ for x in range(1,numstocks+1):
     #callbacks_list = [checkpoint]
 
     # fit network
-    model.fit(train_X, train_y, epochs=1, batch_size=50, validation_data=(test_X, test_y), verbose=2,
-                        shuffle=True)
+    model.fit(train_X, train_y, epochs=1000, batch_size=50, validation_data=(test_X, test_y), verbose=2,
+                        shuffle=False)
 
 
     filename = "model" + str(i)
@@ -160,7 +161,7 @@ for x in range(1,numstocks+1):
     print(modelName + 'running')
     model = load_model(modelName)
     # make a prediction
-    lastVals = lastVals.reshape((1,1,12))
+    lastVals = lastVals.reshape((1,1,n_features))
     yhat = model.predict(lastVals)
     array[g] = yhat
     rmse_array[g] = sqrt(((array[g] - truePrice_array[g]) ** 2).mean())
