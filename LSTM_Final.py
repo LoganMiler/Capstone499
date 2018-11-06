@@ -24,7 +24,15 @@ from keras.models import load_model
 from keras.callbacks import ModelCheckpoint
 from functions import cost
 from functions import series_to_supervised
+from functions import HoldStock 
 
+#configurable parameters:
+##any number of stock csv files can be read in at once 
+##number of days to forecast out for stock prediction 
+##lag days for making stock prediction 
+##number of input features 
+##hyperparameters for LSTM (e.g., number of epochs, batch size, optimizer, etc.) 
+#number of stocks output that are predicted to move the most (in topStocks and bottomStocks table) 
 
 logging.basicConfig(format='%(asctime)s %(message)s',datefmt= '%m/%d/%y %I:%M:%S %p', level= logging.DEBUG)
 log = logging.getLogger(__name__)
@@ -303,7 +311,7 @@ for x in range(1,numstocks+1):
 
     del model
 
-j = 0
+j = 0 #loop to get names of our stocks into list 
 for x in range(1,numstocks+1):
     name = filesnames[j]
     name = name[3:]
@@ -317,9 +325,9 @@ movement = pd.DataFrame(data= volatility_array)
 table = pd.concat([stocks, movement], axis= 1)
 table.columns = ['Stock', 'Value']
 table = table.sort_values(by = 'Value', ascending= False)
-stockRef = 3
-topStocks = table.iloc[0:stockRef]
-bottomStocks = table.iloc[-stockRef:]
+stockRef = 3 #number of stocks put into each table (topStocks and bottomStocks) 
+topStocks = table.iloc[0:stockRef] #table of stocks with most projected upward movement 
+bottomStocks = table.iloc[-stockRef:] #table of stocks with most projected downward movement 
 #record the rmse of the predictions for each of our stocks
 error = pd.DataFrame(data= rmse_array)
 table2 = pd.concat([stocks, error], axis = 1)
