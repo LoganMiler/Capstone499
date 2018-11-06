@@ -25,21 +25,21 @@ from keras.callbacks import ModelCheckpoint
 from functions import cost
 from functions import series_to_supervised
 
-###########NEED TO MAKE A VECTOR OF PREVIOUS DAY VALUES TO MAKE SURE WE'RE USING THE RIGHT ONES ...or just unseparate the loops AHHHHHHHHHHHHHHHHHHHHHH
-#####just for each of the previous day prices and stores it --> use in next loop
-########create error calculation for change in magnitude (instead of just actual price)
 
 logging.basicConfig(format='%(asctime)s %(message)s',datefmt= '%m/%d/%y %I:%M:%S %p', level= logging.DEBUG)
 log = logging.getLogger(__name__)
+
 #read in all of our csv files at once from directory
 filesnames = glob('IT1_*.csv')
+
 #get a list of our dataframes for each stock
 dataframes = [pd.read_csv(f, header = 0, index_col= 0) for f in filesnames]
 numstocks = (len(filesnames)) #save value for number of stocks we have
 log.debug(numstocks)
+
 #########################################################################################################
 
-#m = 0 #initialize variable to iterate through our dataframes in loop
+#initialize variable to iterate through our dataframes in loop
 k = 0 #iterate for string names
 
 #loop to train multiple machine learning models and save them separately to use for later prediction
@@ -53,7 +53,7 @@ for x in range(1,numstocks+1):
     #read in our dataframe for individual stock
     num = x -1
     df = dataframes[num]
-    #print('DF:', df)
+    
     #setting our target variables
     target1 = ['Open', 'High', 'Low', 'Adj Close', 'Volume']  # this will have to be changed as our inputs change
     lastIndex = len(df['Close'])  # get last index of dataframe
@@ -66,10 +66,10 @@ for x in range(1,numstocks+1):
     n_days = 1
     n_features = len(df.columns)  # got from varNo in view of reframed Dataframe
     forecast_out = 1
-
+    
+     #store the closing price so we can iterate on the next day value with our magnitudes of prediction
     prevDay = df.iloc[forecastDays_Index-1]
     prevDay = prevDay['Close']
-    #prevDay_array = np.array([prevDay]) #store the closing price so we can iterate on the next day value with our magnitudes of prediction
     prevDay_array[num] = prevDay
 
     #recording days to input to make our prediction
@@ -95,15 +95,12 @@ for x in range(1,numstocks+1):
         df1 = pd.DataFrame(data= trueValues)
         dfTrueVals = dfTrueVals.append(df1)
 
-
-
     ###############################################################################
     #our differencing to make predictions stationary
     df = df.diff()
     df = df.drop(df.index[0]) #drop our first row of nans
     df = df.drop(df.index[forecastDays_Index:lastIndex])  # drop the days that we are going to predict out on
     values = df.values  # convert out dataframe to array of numpy values for our calculations
-
 
     # convert series to supervised learning
     def series_to_supervised(data, n_in=1, n_out=1, dropnan=True):
@@ -136,13 +133,11 @@ for x in range(1,numstocks+1):
     values = scaler.fit_transform(values)
 
     #specify the name of our target variable
-    #target = 'var' + str(y) + '(t)'
     target = [] #create an empty list to append our target names
     y = 1 #variable to iterate over in over
     for x in range(1,len(df.columns)+1):
         target.append('var' + str(y) + '(t)')
         y +=1
-    #print(target)
 
     # frame as supervised learning
     reframed = series_to_supervised(values, n_days, 1)
@@ -154,7 +149,6 @@ for x in range(1,numstocks+1):
         if named != targetName:
             reframed = reframed.drop(named, axis = 1)
 
-    #print('REFRAMED:', reframed)
     values = reframed.values  # convert reframed dataframe into numpy array
 
     # split into train and test sets
@@ -183,7 +177,8 @@ for x in range(1,numstocks+1):
     # fit network
     history = model.fit(train_X, train_y, epochs=numEpochs, batch_size=numBatch, validation_data=(test_X, test_y), verbose=0,
                         shuffle=False)
-
+    
+    # create filenames for each of our trained models to be saved 
     filename = "model" + str(k)+'.h5'
     model.save(filename)
     model = load_model(filename)
@@ -191,14 +186,9 @@ for x in range(1,numstocks+1):
     model.save(filename)
     del model
     k += 1
-
-
-
-    print('we made it through the loop')
-    #y = 1
-    #log.debug(y)
-    #g = 0
-
+    
+###################################################################### 
+#initializing variables and array for next loop (making predictions of future prices) 
 a = 0 #iterator for changing name of predictions for each stock exported to CSV
 volatility_array = np.zeros(numstocks) #create an array to store the volatility of each stock
 rmse_array = np.zeros(numstocks) #create an array to store rmse for each stock tested
@@ -207,6 +197,7 @@ c = 0 #iterator for prevDay array
 
 q = 1 #iterator for lastVals names
 
+#loop for performing predictions for each input stock data 
 for x in range(1,numstocks+1):
     modelName = 'model' + str(a) +'.h5'
     stockName = filesnames[a]
@@ -222,10 +213,7 @@ for x in range(1,numstocks+1):
     num2 = x - 1 #the first index for lastVals
     dfLastValues = stockList[num2]
     lastVals = dfLastValues.values #turn our dataframe into an array
-    #lastVals = df_lastVals.iloc[num2].values
-    lastVals = lastVals.reshape((1,n_days,n_features))
-    #new = test_X[-1].reshape((1,1,n_features))
-    #yhat = model.predict(test_X[-1])
+    lastVals = lastVals.reshape((1,n_days,n_features)) #reshape our array 
 
     #make prediction
     yhat = model.predict(lastVals)
@@ -236,7 +224,7 @@ for x in range(1,numstocks+1):
     c += 1
 
     #our loop within a loop for multiple forecasting days
-
+    #initializing arrays for this loop 
     predictedPrice_array = np.zeros(numForecastDays)
     errorArray = np.zeros(numForecastDays)
 
@@ -248,28 +236,26 @@ for x in range(1,numstocks+1):
         new_yhat = model.predict(predVals)#predicing next day out values
         # store our previous predicted values for sliding window
         lastVals = np.vstack((lastVals, new_yhat))  # keep stacking our output arrays
-        lastVals = lastVals[-n_days:]  # slice so that we get out our
+        lastVals = lastVals[-n_days:]  # slice array to keep track of our previous days 
 
         #invert our normalized values
         invertVals = scaler.inverse_transform(new_yhat)
         df_InvertedVals = pd.DataFrame(data=invertVals)
+        #These column names for InvertedVals can be adjusted depending on our input variables names: 
         df_InvertedVals.columns = ['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']
         #df_InvertedVals.columns = ['Open', 'High', 'Low', 'Close', 'Adj Close']
-        #df_InvertedVals = df_InvertedVals.drop(df_InvertedVals.index[0]) #drop our first row of datafram
         predictedVals = df_InvertedVals['Close'].values  # Get out predicted values into a dataframe
-
+        
+        #store our predicted values in a dataframe 
         if x == 1:
             df_predictedVals = pd.DataFrame(data=predictedVals)
         else:
             df1 = pd.DataFrame(data= predictedVals)
             df_predictedVals = df_predictedVals.append(df1)
 
-
-
     #############################################
-    df_predictedVals.reset_index(drop = True)
-    trueVals = dfTrueVals.iloc[num2].values
-    #trueVals = dfTrueVals.values
+    df_predictedVals.reset_index(drop = True) #indexing our dataframe 
+    trueVals = dfTrueVals.iloc[num2].values #putting the true stock price values in an array 
     #create an empty array to fill with rmse for each data point (to record how error is as time goes on)
     rmse_array = np.zeros(len(predictedVals))
     predictedVals = df_predictedVals.values #create an array of our predicted stock price changes
@@ -278,7 +264,7 @@ for x in range(1,numstocks+1):
     i = 0
     w = 0
     for x in range(1,len(predictedVals)+1):
-    #get predictions of real price by adding to last day we have iteratively (prevDay:
+    #get predictions of real price by adding to last day we have iteratively (prevDay)
         if i == 0:
             #This says our first actual price equals the previous price + change in price magnitude
             #predictedPrice_array[i] = prevDay_array[i] + predictedVals[0]
