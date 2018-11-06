@@ -332,3 +332,18 @@ bottomStocks = table.iloc[-stockRef:] #table of stocks with most projected downw
 error = pd.DataFrame(data= rmse_array)
 table2 = pd.concat([stocks, error], axis = 1)
 
+#######################################################################
+
+#using our cost function and HoldStock function:
+init_invest = 10000
+tradeExec_cost = 8.9
+money = np.zeros(len(trueVals))
+money[0] = init_invest 
+holdings = np.zeros(len(trueVals))
+
+#predicted array, true array values, initial investment value, cost of transacting trades, money array to keep track of leftover funds, holdings to keep track of stock values held
+[percentReturn, portfolioValue_array] = cost(predictedPrice_array, trueVals,prevDay, init_invest,tradeExec_cost, money, holdings)
+
+#using our holdstock function for comparison:
+[percent_change, portfolio_value] = HoldStock(trueVals, init_invest, tradeExec_cost)
+
