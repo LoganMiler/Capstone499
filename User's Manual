@@ -1,0 +1,54 @@
+ USER’S MANUAL  
+ This section details how a user can utilize the predictive system I have created for stock 
+trading. It should be noted that the user must have access to Excel and Python.   
+
+1: ACCESSING THE CODE  
+The complete code for my finished project is available on GitHub 
+(https://github.com/lhladik15/Capstone499). The user should be able to fork the repository for 
+the folder labeed “Capstone499.” Forking allows the user to get a copy of and freely experiment 
+with the code.  
+
+2: SETTING UP YOUR INPUTS  
+The inputs to the system should be contained within one or CSV files. (Examples of such 
+CSV files are kept as referrals in my GitHub repository). The data should be formatted such that 
+there is a date column indexing the data, and then daily data for numerical data relating to stock 
+price movements. This could span from historical stock prices to technical indicators to 
+fundamentals to whatever the user deems appropriate data corresponding to stock prices.  
+In line 47 in the code, there is a variable called filesnames, which will store the file names of 
+each of the input CSV file(s). The code on GitHub is as follows:  
+ filesnames = glob('IT1_*.csv') 
+The name'IT1_*.csv' in  quotations corresponds to the names of the input CSV files. For my 
+tests, I was utilizing IT sector stocks, so I began each file name for each stock with the letter ‘IT’ 
+to denote this. This notation with the asterisk (*) means that the filenames of every stock starting 
+with the letters ‘IT’ will be read in for later calculations.  
+
+3: SETTING THE IDEAL PARAMETERS  
+ In accordance with my design requirements, I made the final design output flexible to the 
+user. Thus, there are a number of configurable parameters. The number of days to forecast out on 
+for stock prediction is represented by the variables ‘numForecastDays’ and can be set to any 
+desired number in line 68. The number of lag days for a lagging window (represented by the 
+variable named ‘forecast_out’ can be set in line 76). Any number or type of numerical input can 
+be put into the code. The names of these variables that correspond to the CSV file must be 
+specified in line 66 for the variable ‘target1’ and in line 253 for the variables ‘df_InvertedVals’. 
+Lastly, the code is set up so that it will output two tables—one containing the stock prices that 
+are projected to rise the most and the stock prices that are projected to fall the most. The number 
+of stocks desired in each of these tables can be specified by setting the variable ‘stockRef’ in line 
+328.  
+
+4: GETTING OUTPUTS  
+There two different outputs from the code. The first is the stock table mentioned above that 
+projects which the topmost and bottom-most stocks. The second output is a CSV file or multiple 
+CSV files. The number of these files corresponds to the number of inputs CSV files for stock that 
+is being analyzed. In the CSV file the predicted price change, the actual predicted price change, 
+and direction that the stock is projected to move are all output. Additionally, since I was strictly 
+working with historical data to back-test the effectiveness of different algorithms, I knew the true 
+prices that corresponded to the predictions. As such, these CSVs will also contain the true price, 
+error between the true price and predicted price, the true price movement, and the actual 
+direction the true price moved. Again, because this projected involved back-testing, the cost 
+metrics developed were also incorporated into this CSV file output. One output will be for the  
+profits the investor would have made if he had invested based on the algorithms predictions. For 
+the sake of comparison, the market baseline (i.e., how well the investor would have done if he 
+had just bought and held the stock) is also included to show if using the predictive algorithm 
+would both minimize losses and maximize gains. (The ultimate goal is to use predictions to 
+defeat the market baseline).  
+ 
