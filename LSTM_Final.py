@@ -65,7 +65,7 @@ for x in range(1,numstocks+1):
     #setting our target variables
     target1 = ['Open', 'High', 'Low', 'Adj Close', 'Volume']  # this will have to be changed as our inputs change
     lastIndex = len(df['Close'])  # get last index of dataframe
-    numForecastDays = 1  # variable for number of days we want to forecast out
+    numForecastDays = 5  # variable for number of days we want to forecast out
     forecastDays_Index = lastIndex - numForecastDays  # index to take days we want to forecast out off of datafram
 
 
@@ -325,7 +325,7 @@ movement = pd.DataFrame(data= volatility_array)
 table = pd.concat([stocks, movement], axis= 1)
 table.columns = ['Stock', 'Value']
 table = table.sort_values(by = 'Value', ascending= False)
-stockRef = 3 #number of stocks put into each table (topStocks and bottomStocks) 
+stockRef = 1 #number of stocks put into each table (topStocks and bottomStocks) 
 topStocks = table.iloc[0:stockRef] #table of stocks with most projected upward movement 
 bottomStocks = table.iloc[-stockRef:] #table of stocks with most projected downward movement 
 #record the rmse of the predictions for each of our stocks
